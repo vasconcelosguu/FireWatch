@@ -480,3 +480,12 @@ O diferencial do projeto é a integração entre **pipeline de Machine Learning 
 ## 📌 Observação
 
 O modelo atual é um **protótipo acadêmico**. Ele não deve ser considerado um sistema certificado de segurança contra incêndios nem substituir equipamentos ou sistemas profissionais de detecção e alarme.
+
+## 👥 Integrantes
+
+- Felipe Piovesan
+- Frederico Faben Brumati
+- Gustavo Vasconcelos Solomão
+- Ruan Gimenes
+- Vitor do Nascimento Zuchieri
+- José Roberto Miranda Neto
