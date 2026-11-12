@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import os
 import time
 from datetime import datetime
 from pathlib import Path
 
 import cv2
 import streamlit as st
+from dotenv import load_dotenv
+
+from ai.report_generator import (
+    DEFAULT_MODEL, ReportGenerationError, generate_report, payload_fingerprint,
+    prepare_report_data, render_report_markdown, render_report_pdf,
+)
 
 from detector.preprocess import ImagePreprocessor, PreprocessConfig
 from utils.video import read_video_metadata, save_uploaded_video
@@ -69,6 +76,17 @@ def render_monitor(root: Path) -> None:
     st.title("🎥 Monitoramento de vídeo")
     st.caption("Upload MP4, AVI ou MOV e processamento frame a frame com OpenCV + YOLO.")
 
+    load_dotenv(root / ".env", override=False)
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    groq_configured = bool(api_key and api_key != "coloque_sua_chave_aqui")
+    auto_summary = st.checkbox(
+        "✨ Gerar resumo automático com IA ao terminar o vídeo",
+        value=True,
+        help="Ao concluir o processamento, a Groq receberá somente as estatísticas e os metadados das novas detecções. Nenhuma imagem ou vídeo será enviado.",
+    )
+    if auto_summary and not groq_configured:
+        st.caption("Configure a chave Groq no .env para habilitar o resumo automático. O vídeo continuará sendo processado normalmente.")
+
     uploaded = st.file_uploader("Selecione um vídeo", type=["mp4", "avi", "mov"])
     if uploaded is None:
         st.info("Envie um vídeo para iniciar o monitoramento.")
@@ -102,6 +120,7 @@ def render_monitor(root: Path) -> None:
     detector.confidence = st.session_state.confidence_threshold
     preprocessor = _preprocessor_from_state()
 
+    initial_log_count = len(st.session_state.logger.load())
     cap = cv2.VideoCapture(str(temp_path))
     if not cap.isOpened():
         st.error("OpenCV não conseguiu iniciar a leitura do vídeo.")
@@ -185,6 +204,53 @@ def render_monitor(root: Path) -> None:
             f"Vídeo concluído: {processed_count} frames em {elapsed:.2f}s "
             f"(FPS médio de processamento: {average_fps:.2f})."
         )
+        if auto_summary and groq_configured:
+            try:
+                new_records = st.session_state.logger.load().iloc[initial_log_count:].to_dict(orient="records")
+                if new_records:
+                    summary_payload = prepare_report_data(new_records, group_id="RESUMO-VIDEO")
+                    model = os.getenv("FIREWATCH_GROQ_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+                    with st.spinner("Gerando resumo automático do vídeo com a IA generativa..."):
+                        sections = generate_report(summary_payload, model=model)
+                        markdown = render_report_markdown(summary_payload, sections)
+                    st.session_state.video_ai_summary = {
+                        "markdown": markdown,
+                        "model": model,
+                        "fingerprint": payload_fingerprint(summary_payload),
+                    }
+                    st.success("Resumo inteligente do vídeo gerado.")
+                else:
+                    st.info("O vídeo terminou sem novas detecções registradas. Não há dados para gerar um resumo.")
+            except (ValueError, ReportGenerationError) as exc:
+                st.warning(f"O vídeo foi processado, mas não foi possível gerar o resumo pela Groq: {exc}")
+            except Exception:
+                st.warning("O vídeo foi processado, mas ocorreu um erro inesperado ao gerar o resumo. O histórico foi preservado.")
+        elif auto_summary and not groq_configured:
+            st.info("Processamento concluído. Configure GROQ_API_KEY para gerar o resumo automático.")
     finally:
         cap.release()
         temp_path.unlink(missing_ok=True)
+    summary = st.session_state.get("video_ai_summary")
+    if summary:
+        st.divider()
+        st.subheader("📝 Resumo automático do último vídeo")
+        st.caption(f"Modelo generativo: {summary['model']}")
+        st.markdown(summary["markdown"])
+        d1, d2 = st.columns(2)
+        d1.download_button(
+            "⬇️ Baixar resumo (.txt)",
+            data=summary["markdown"].encode("utf-8"),
+            file_name="firewatch_resumo_video.txt",
+            mime="text/plain; charset=utf-8",
+            use_container_width=True,
+        )
+        try:
+            pdf = render_report_pdf(summary["markdown"])
+            d2.download_button(
+                "⬇️ Baixar resumo (.pdf)", data=pdf,
+                file_name="firewatch_resumo_video.pdf", mime="application/pdf",
+                use_container_width=True,
+            )
+        except ImportError:
+            d2.caption("Instale reportlab para exportar PDF.")
+

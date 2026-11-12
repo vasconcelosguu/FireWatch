@@ -1,95 +1,53 @@
-# ==============================
-# Python
-# ==============================
+.venv/
+venv/
 __pycache__/
 *.py[cod]
 *.pyo
-*.pyd
+*.tmp
+*.temp
+*.log
+.DS_Store
+Thumbs.db
+.streamlit/secrets.toml
 
-# ==============================
-# Virtual environment
-# ==============================
-.venv/
-venv/
-env/
-ENV/
+# Pesos e artefatos grandes de treinamento
+runs/firewatch/*
+!runs/README.md
+models/*.pt
+!models/README.md
 
-# ==============================
-# Environment / secrets
-# ==============================
+# Sa√≠das geradas em execu√ß√£o
+screenshots/*.jpg
+screenshots/*.jpeg
+screenshots/*.png
+reports/extracted_frames/
+# Datasets baixados automaticamente
+/data_sources/dfire/
+/data_sources/indoor_fire_smoke/
+/datasets/fire_smoke/train/images/*
+/datasets/fire_smoke/train/labels/*
+/datasets/fire_smoke/val/images/*
+/datasets/fire_smoke/val/labels/*
+/datasets/fire_smoke/test/images/*
+/datasets/fire_smoke/test/labels/*
+reports/evaluation_summary.csv
+reports/data_runtime.yaml
+reports/dataset_manifest.json
+
+# Segredos locais da API Groq
 .env
 .env.*
 !.env.example
 
-# ==============================
-# Datasets
-# ==============================
+# Arquivos locais e dados de execuÁ„o
+logs/
+videos/
 datasets/*
-!datasets/.gitkeep
+!datasets/README.md
+data_sources/dfire/
+data_sources/indoor_fire_smoke/
+runs/detect/
+yolo11n.pt
 
-data_sources/*
-!data_sources/.gitkeep
-
-# ==============================
-# YOLO / training outputs
-# ==============================
-runs/*
-!runs/README.md
-
-# ==============================
-# Logs
-# ==============================
-logs/*
-!logs/.gitkeep
+# Arquivos tempor·rios
 *.log
-
-# ==============================
-# Generated reports
-# ==============================
-reports/*
-!reports/.gitkeep
-
-# ==============================
-# Videos
-# ==============================
-videos/*
-!videos/.gitkeep
-
-# ==============================
-# Screenshots / temporary files
-# ==============================
-screenshots/*
-!screenshots/.gitkeep
-
-# ==============================
-# Generated model files
-# ==============================
-*.pt
-*.pth
-*.onnx
-
-# ==============================
-# Python / IDE
-# ==============================
-.vscode/
-.idea/
-*.code-workspace
-
-# ==============================
-# OS
-# ==============================
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# ==============================
-# Jupyter
-# ==============================
-.ipynb_checkpoints/
-
-# ==============================
-# Temporary files
-# ==============================
-*.tmp
-*.temp
-*.bak

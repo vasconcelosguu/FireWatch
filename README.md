@@ -1,369 +1,133 @@
-# 🔥 FireWatch AI — Detecção de Incêndio e Fumaça com Inteligência Artificial
+# 🔥 FireWatch AI — Pipeline de IA para Detecção de Incêndio e Fumaça
 
-Sistema acadêmico de **Visão Computacional e Deep Learning** para detecção de **fogo (Fire)** e **fumaça (Smoke)** em imagens, vídeos e webcam utilizando **Ultralytics YOLO**.
+Sistema acadêmico de **visão computacional e Deep Learning** para detectar `Fire` e `Smoke` em vídeos e webcam usando **Ultralytics YOLO**.
 
-O projeto foi estruturado como um **pipeline de Inteligência Artificial reproduzível**, desde a obtenção automática de datasets públicos até treinamento, avaliação e inferência em vídeo.
+A versão atual foi preparada para que **não seja necessário coletar imagens manualmente** e usa por padrão uma amostra acadêmica de **1.500 imagens reais**, suficiente para demonstrar o pipeline sem exigir horas de treinamento em CPU. O pipeline baixa datasets públicos de incêndio/fumaça, normaliza as anotações, elimina duplicatas, cria `train/val/test`, treina o YOLO, valida no conjunto de teste e executa experimentos de threshold.
 
----
-
-## 🎯 Objetivo
-
-Desenvolver e demonstrar um sistema de detecção automática de incêndio e fumaça utilizando um modelo de Deep Learning, avaliando seu desempenho por métricas objetivas e integrando o modelo a uma aplicação de monitoramento.
-
-O projeto não depende de coleta manual de imagens ou anotação manual para o fluxo principal: os datasets são obtidos automaticamente, preparados e convertidos para o formato utilizado pelo YOLO.
+> **Importante:** o ZIP não inclui os datasets brutos nem `fire_model.pt` porque esses arquivos são grandes. O projeto baixa e gera tudo automaticamente com scripts reproduzíveis.
 
 ---
 
-# 🤖 Pipeline de Inteligência Artificial
+## 🎯 Objetivo acadêmico
+
+O projeto demonstra explicitamente um pipeline de Inteligência Artificial:
 
 ```text
-┌──────────────────────────────┐
-│      DATASETS PÚBLICOS       │
-│ Indoor Fire Smoke / D-Fire   │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│     DOWNLOAD AUTOMÁTICO      │
-│        scripts/              │
-│    download_datasets.py      │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│   CURADORIA E PREPARAÇÃO     │
-│ deduplicação + normalização  │
-│        das anotações         │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│      DATASET YOLO            │
-│ Fire = 0 | Smoke = 1         │
-│ Train / Validation / Test    │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│      DATA AUGMENTATION        │
-│ flip / scale / mosaic / etc. │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│        TREINAMENTO            │
-│       YOLO + Deep Learning    │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│          AVALIAÇÃO            │
-│ Precision / Recall / mAP50    │
-│          mAP50-95             │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│       TESTE EXTERNO           │
-│ imagens / vídeos não usados   │
-│       no treinamento          │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│       INFERÊNCIA              │
-│ vídeo / webcam / imagem       │
-└──────────────┬───────────────┘
-               ↓
-┌──────────────────────────────┐
-│ ALERTA + SCREENSHOT + LOG     │
-└──────────────────────────────┘
+DATASETS PÚBLICOS
+      ↓
+COLETA AUTOMÁTICA
+      ↓
+CURADORIA / DEDUPLICAÇÃO
+      ↓
+NORMALIZAÇÃO DAS ANOTAÇÕES
+      ↓
+TRAIN / VALIDATION / TEST
+      ↓
+DATA AUGMENTATION
+      ↓
+PRÉ-PROCESSAMENTO
+      ↓
+YOLO — DEEP LEARNING
+      ↓
+MÉTRICAS
+Precision / Recall / mAP50 / mAP50-95
+      ↓
+TESTE EXTERNO
+      ↓
+INFERÊNCIA EM VÍDEO / WEBCAM
+      ↓
+ALERTA + SCREENSHOT + LOG
+      ↓
+DASHBOARD
 ```
+
+Isso permite apresentar o projeto não apenas como uma interface, mas como um **experimento de Machine Learning reproduzível**.
 
 ---
 
-# 🧠 Onde está a Inteligência Artificial?
+# 🤖 Onde está a IA?
 
-A IA está no modelo **YOLO (You Only Look Once)**, utilizado como detector de objetos.
+O FireWatch AI agora possui **duas camadas de Inteligência Artificial com funções diferentes**:
 
-O modelo foi treinado para reconhecer duas classes:
+### 1. YOLO — visão computacional
 
-```text
-0 → Fire
-1 → Smoke
-```
+O YOLO é o modelo de Deep Learning responsável por detectar visualmente duas classes:
 
-Para cada objeto detectado, o modelo produz:
+- `0 = Fire`
+- `1 = Smoke`
 
-- classe;
-- nível de confiança (confidence);
-- bounding box.
+Durante a inferência, recebe frames e retorna classe, pontuação de confiança e bounding box. A aplicação usa essas saídas para gerar alertas, screenshots e registros.
 
-Exemplo:
+### 2. LLM Groq — IA generativa
 
-```text
-Fire
-Confidence: 0.949
-Bounding Box: x1, y1, x2, y2
-```
+A página **🧠 Relatórios Inteligentes** usa um modelo de linguagem disponibilizado pela Groq para interpretar os registros já produzidos pelo YOLO e redigir relatórios técnicos em português, com resumo, análise por classe, observações temporais, pontos de atenção, recomendações e conclusão.
 
-A aplicação utiliza essas predições para gerar a visualização e, quando uma detecção atende ao limiar configurado, gerar o alerta de fogo/fumaça.
+A IA generativa não substitui a detecção visual e não recebe imagens ou vídeos nesta integração. Ela trabalha com metadados e estatísticas, e nunca deve ser interpretada como confirmação de incêndio real.
+
+Configuração, arquitetura, prompt, segurança, testes e limitações: [documentação da IA generativa](docs/IA_GENERATIVA_GROQ.md).
 
 ---
 
-# 📦 Dataset
+# 📦 Datasets utilizados
 
-## Dataset principal — Indoor Fire Smoke
+## 1. D-Fire — padrão
 
-A configuração acadêmica leve utiliza o **Indoor Fire Smoke Dataset**, com 5.000 imagens reais disponíveis.
+O D-Fire possui mais de 21 mil imagens de fogo e fumaça e anotações de bounding boxes em formato YOLO. A distribuição publicada informa 14.692 bounding boxes de Fire e 11.865 de Smoke. citeturn1view0
 
-Para reduzir o custo computacional do treinamento, o pipeline pode trabalhar com uma amostra reprodutível de até **1.500 imagens**, selecionadas automaticamente com `seed=42`.
+Fonte original: https://github.com/gaia-solutions-on-demand/DFireDataset
 
-A divisão planejada é aproximadamente:
+O projeto baixa automaticamente uma cópia pública do dataset e preserva a atribuição da fonte original.
 
-```text
-70% → treinamento
-15% → validação
-15% → teste
+## 2. Indoor Fire Smoke Dataset — opcional
+
+Dataset publicado no Zenodo com **5.000 imagens reais** de ambientes internos, contendo bounding boxes de fogo e fumaça e divisão 70/15/15 para treino, validação e teste. citeturn4view0
+
+DOI: https://doi.org/10.5281/zenodo.15826133
+
+Para usar os dois datasets:
+
+```powershell
+python scripts/run_pipeline.py --sources indoor --max-images 1500 --epochs 10
 ```
 
-A seleção e a preparação são feitas automaticamente por:
+### Por que usar mais de uma fonte?
 
-```text
-scripts/prepare_dataset.py
-```
-
-## Dataset adicional — D-Fire
-
-O projeto também possui suporte ao **D-Fire**, um dataset público voltado à detecção de fogo e fumaça.
-
-Ele pode ser utilizado em experimentos posteriores para aumentar a diversidade dos dados.
+A ideia é aumentar a diversidade visual e reduzir dependência de um único domínio. O conjunto de teste deve permanecer separado para medir a capacidade de generalização.
 
 ---
 
-# 🔄 Preparação dos dados
+# 🚀 Execução automática — recomendada
 
-O script de preparação executa:
+No Windows, basta executar:
 
-1. localização das imagens;
-2. localização das anotações;
-3. leitura das bounding boxes;
-4. normalização das classes;
-5. conversão para o formato YOLO quando necessário;
-6. remoção de imagens duplicadas por hash SHA-256;
-7. divisão em treino, validação e teste;
-8. geração do `data.yaml`;
-9. geração do `dataset_manifest.json`.
-
-No FireWatch:
-
-```text
-Fire  → classe 0
-Smoke → classe 1
+```powershell
+setup_and_train.bat
 ```
 
-No caso do D-Fire, a convenção de classes é normalizada automaticamente pelo pipeline.
+O script:
 
----
+1. cria `.venv`;
+2. instala as dependências;
+3. baixa o D-Fire;
+4. prepara o dataset;
+5. treina o YOLO;
+6. copia o melhor peso para `models/fire_model.pt`;
+7. valida no teste;
+8. executa o experimento de thresholds.
 
-# 🧪 Treinamento
-
-O treinamento utiliza **Ultralytics YOLO** com pesos pré-treinados, realizando transferência de aprendizado (transfer learning).
-
-Configuração acadêmica utilizada:
-
-```text
-Épocas:        10
-Imagem:        512 × 512
-Batch:         4
-Workers:       2
-Patience:      5
-```
-
-Durante o treinamento são utilizadas técnicas de data augmentation, incluindo transformações como:
-
-- flip horizontal;
-- escala;
-- translação;
-- rotação;
-- mosaic;
-- mixup.
-
-O melhor modelo é salvo em:
-
-```text
-runs/firewatch/train/weights/best.pt
-```
-
-e copiado para:
-
-```text
-models/fire_model.pt
-```
-
----
-
-# 📊 Avaliação
-
-O pipeline calcula:
-
-- **Precision**
-- **Recall**
-- **mAP@50**
-- **mAP@50-95**
-
-Também são testados diferentes thresholds de confiança:
-
-```text
-0.25
-0.40
-0.50
-0.60
-0.75
-```
-
-Isso permite observar o equilíbrio entre falsos positivos e falsos negativos.
-
-O resultado é salvo em:
-
-```text
-reports/evaluation_summary.csv
-```
-
-## Resultado registrado no treinamento acadêmico
-
-| Confidence | Precision | Recall | mAP50 | mAP50-95 |
-|---:|---:|---:|---:|---:|
-| 0.25 | 51,94% | 48,64% | **36,68%** | **15,74%** |
-| 0.40 | 53,97% | 46,99% | 32,10% | 13,53% |
-| 0.50 | 59,27% | 37,06% | 27,05% | 11,20% |
-| 0.60 | 60,84% | 32,09% | 23,68% | 9,97% |
-| 0.75 | **67,76%** | 20,71% | 16,05% | 6,79% |
-
-O threshold de 0,25 apresentou o maior mAP50 entre os valores avaliados. Já thresholds maiores aumentaram a Precision, mas reduziram o Recall.
-
----
-
-# 📈 Artefatos gerados
-
-O treinamento gera automaticamente:
-
-```text
-runs/firewatch/train/
-├── weights/
-│   ├── best.pt
-│   └── last.pt
-├── results.csv
-├── results.png
-├── confusion_matrix.png
-├── confusion_matrix_normalized.png
-├── BoxPR_curve.png
-├── BoxP_curve.png
-├── BoxR_curve.png
-├── BoxF1_curve.png
-├── train_batch*.jpg
-└── val_batch*_labels.jpg
-    val_batch*_pred.jpg
-```
-
-Esses arquivos permitem analisar visualmente o comportamento do modelo e documentar o experimento.
-
----
-
-# 🎥 Inferência em vídeo
-
-Depois do treinamento, o modelo pode ser utilizado para processar vídeos.
-
-Fluxo:
-
-```text
-Vídeo
-  ↓
-Extração dos frames
-  ↓
-Pré-processamento
-  ↓
-YOLO
-  ↓
-Detecção Fire / Smoke
-  ↓
-Confidence
-  ↓
-Bounding Box
-  ↓
-Alerta
-  ↓
-Log / Screenshot
-```
-
-Em um teste realizado com vídeo real, a aplicação apresentou aproximadamente:
-
-```text
-FPS: 15,6
-Detecções: 2
-Fire: 82,5%
-Fire: 94,9%
-```
-
-O sistema exibiu o alerta:
-
-```text
-ALERTA — FOGO DETECTADO
-```
-
-Esse resultado demonstra a integração entre o modelo de IA e a aplicação de monitoramento.
-
-> O FPS observado é uma medição de demonstração em ambiente local e não deve ser tratado como benchmark universal do sistema.
-
----
-
-# 🖥️ Aplicação
-
-A interface foi construída com **Streamlit** e permite utilizar o modelo treinado para monitoramento.
-
-Para iniciar:
+Depois:
 
 ```powershell
 .venv\Scripts\python.exe -m streamlit run app.py
 ```
 
-O sistema pode trabalhar com:
-
-- imagens;
-- vídeos;
-- webcam;
-- visualização das detecções;
-- confidence;
-- bounding boxes;
-- alertas;
-- registro de eventos.
-
 ---
 
-# ⚙️ Execução automática
+# 🧪 Execução manual
 
-No Windows:
+## Instalar
 
-```powershell
-.\setup_and_train.bat
-```
-
-O pipeline executa:
-
-```text
-1. Criar ambiente virtual
-2. Instalar dependências
-3. Baixar dataset
-4. Preparar dataset
-5. Treinar YOLO
-6. Validar modelo
-7. Avaliar thresholds
-8. Gerar fire_model.pt
-```
-
-Depois:
-
-```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
-```
-
----
-
-# 🧩 Execução manual
-
-## Criar ambiente
+Use Python **3.10 ou superior** (a biblioteca oficial `groq` atualmente requer Python 3.10+).
 
 ```powershell
 python -m venv .venv
@@ -375,19 +139,19 @@ python -m pip install -r requirements.txt
 ## Baixar dataset
 
 ```powershell
-python scripts/download_datasets.py --datasets indoor
-```
-
-Para D-Fire:
-
-```powershell
 python scripts/download_datasets.py --datasets dfire
 ```
 
-## Preparar
+Ou os dois:
 
 ```powershell
-python scripts/prepare_dataset.py --sources indoor --max-images 1500
+python scripts/download_datasets.py --datasets dfire indoor
+```
+
+## Preparar dataset
+
+```powershell
+python scripts/prepare_dataset.py --sources dfire
 ```
 
 ## Treinar
@@ -396,34 +160,98 @@ python scripts/prepare_dataset.py --sources indoor --max-images 1500
 python scripts/train_model.py --epochs 10 --imgsz 512 --batch 4
 ```
 
-## Validar
+Com GPU NVIDIA:
+
+```powershell
+python scripts/train_model.py --epochs 10 --imgsz 512 --batch 4 --device 0
+```
+
+## Validar no teste
 
 ```powershell
 python scripts/validate_model.py
 ```
 
-## Avaliar thresholds
+## Experimento de threshold
 
 ```powershell
 python scripts/evaluate_experiments.py
 ```
 
-## Executar pipeline completo
+O resultado é salvo em:
+
+```text
+reports/evaluation_summary.csv
+```
+
+## Pipeline completo
 
 ```powershell
-python scripts/run_pipeline.py --sources indoor --max-images 1500 --epochs 10 --imgsz 512 --batch 4
+python scripts/run_pipeline.py --sources indoor --max-images 1500 --epochs 10
+```
+
+Ou:
+
+```powershell
+python scripts/run_pipeline.py --sources indoor --max-images 1500 --epochs 10
 ```
 
 ---
 
-# 📁 Estrutura do projeto
+# 📊 Experimentos
+
+O pipeline avalia diferentes thresholds:
 
 ```text
-FireWatch/
+0.25
+0.40
+0.50
+0.60
+0.75
+```
+
+E registra:
+
+- Precision
+- Recall
+- mAP50
+- mAP50-95
+
+Isso permite demonstrar o trade-off entre **falsos positivos e falsos negativos**.
+
+O treinamento também usa data augmentation do Ultralytics, incluindo transformações como flip, escala, mosaic e mixup.
+
+---
+
+# 🧠 Processamento de imagens
+
+O FireWatch mantém o módulo de pré-processamento configurável:
+
+- resize;
+- Gaussian Blur;
+- denoise;
+- contraste;
+- BGR → RGB;
+- BGR → HSV.
+
+O processamento é separado do modelo para permitir comparar uma imagem original com uma versão processada.
+
+> O projeto não afirma que cada transformação melhora o modelo. Isso pode ser avaliado experimentalmente.
+
+---
+
+# 🏗️ Estrutura
+
+```text
+firewatch-ai/
 ├── app.py
 ├── setup_and_train.bat
 ├── requirements.txt
 ├── README.md
+│
+├── ai/
+│   ├── prompts.py
+│   └── report_generator.py
 │
 ├── detector/
 │   ├── detector.py
@@ -432,51 +260,194 @@ FireWatch/
 ├── interface/
 │   ├── home.py
 │   ├── monitor.py
-│   ├── settings.py
 │   ├── webcam.py
-│   └── history.py
+│   ├── history.py
+│   ├── ai_reports.py
+│   └── settings.py
+│
+├── utils/
+│   ├── video.py
+│   ├── logger.py
+│   └── alerts.py
 │
 ├── scripts/
 │   ├── download_datasets.py
 │   ├── prepare_dataset.py
+│   ├── run_pipeline.py
 │   ├── train_model.py
 │   ├── validate_model.py
 │   ├── evaluate_experiments.py
-│   ├── run_pipeline.py
+│   ├── test_model.py
 │   ├── extract_frames.py
-│   └── test_model.py
+│   └── create_synthetic_dataset.py
 │
-├── datasets/
 ├── data_sources/
+├── datasets/fire_smoke/
 ├── models/
-├── reports/
 ├── runs/
-├── logs/
+├── reports/
+├── docs/
+│   └── IA_GENERATIVA_GROQ.md
+├── tests/
+│   └── test_ai_reports.py
+├── screenshots/
 ├── videos/
-└── screenshots/
+└── logs/
 ```
 
----
-
-# 🎓 Contribuição acadêmica
-
-O FireWatch pode ser apresentado como um projeto de **Visão Computacional aplicada à prevenção de incêndios**, contemplando:
-
-1. problema de detecção;
-2. obtenção de dados reais;
-3. preparação e curadoria do dataset;
-4. aplicação de Deep Learning;
-5. treinamento por transferência de aprendizado;
-6. avaliação quantitativa;
-7. análise de threshold;
-8. teste com dados externos;
-9. inferência em vídeo;
-10. geração de alertas.
-
-O diferencial do projeto é a integração entre **pipeline de Machine Learning e aplicação funcional**, permitindo demonstrar tanto o desenvolvimento do modelo quanto sua utilização prática.
+`create_synthetic_dataset.py` permanece apenas como ferramenta didática/experimental. **Ele não faz parte do pipeline principal.**
 
 ---
 
-## 📌 Observação
+# 🔬 Critérios para uma boa avaliação
 
-O modelo atual é um **protótipo acadêmico**. Ele não deve ser considerado um sistema certificado de segurança contra incêndios nem substituir equipamentos ou sistemas profissionais de detecção e alarme.
+O projeto deve apresentar pelo menos:
+
+- dataset de origem identificado;
+- quantidade de imagens;
+- quantidade de classes;
+- distribuição Train/Validation/Test;
+- método de anotação;
+- ausência de duplicatas;
+- modelo e pesos base;
+- épocas de treinamento;
+- data augmentation;
+- Precision;
+- Recall;
+- mAP50;
+- mAP50-95;
+- matriz de confusão gerada pelo YOLO;
+- exemplos de verdadeiros positivos;
+- exemplos de falsos positivos;
+- exemplos de falsos negativos;
+- teste em vídeo;
+- teste em webcam;
+- limitações e trabalhos futuros.
+
+---
+
+# ⚠️ Limitações
+
+O FireWatch AI é um **protótipo acadêmico**. Ele não substitui sistemas certificados de detecção e alarme de incêndio.
+
+Mesmo usando datasets reais, a qualidade final depende de fatores como:
+
+- qualidade das imagens;
+- domínio das câmeras utilizadas;
+- iluminação;
+- distância;
+- tamanho do fogo;
+- densidade da fumaça;
+- resolução;
+- ambiente interno/externo.
+
+Um resultado alto no teste não deve ser apresentado como garantia de segurança em ambiente real.
+
+---
+
+# 📚 Referências dos datasets
+
+**D-Fire** — Venâncio, P. V. A. B.; Lisboa, A. C.; Barbosa, A. V. *An automatic fire detection system based on deep convolutional neural networks for low-power, resource-constrained devices*. Neural Computing and Applications, 2022. A página oficial do dataset disponibiliza imagens, labels e divisões para treinamento/teste. citeturn1view0
+
+**Indoor Fire Smoke Dataset** — Putra, Arya Krisna. Dataset publicado no Zenodo, 2025, DOI 10.5281/zenodo.15826133. citeturn4view0
+
+---
+
+# 🏁 Resultado esperado
+
+Ao final do pipeline, o projeto deve possuir:
+
+```text
+models/fire_model.pt
+reports/evaluation_summary.csv
+runs/firewatch/train/
+reports/data_runtime.yaml
+```
+
+E a aplicação poderá executar:
+
+```text
+🔥 FireWatch AI
+       ↓
+YOLO treinado
+       ↓
+Fire / Smoke
+       ↓
+Bounding Box + Confidence
+       ↓
+Alerta
+       ↓
+Screenshot + CSV
+       ↓
+Dashboard
+```
+
+## Execução automática no Windows
+
+Na raiz do projeto, execute no PowerShell:
+
+```powershell
+.\setup_and_train.bat
+```
+
+O script cria `.venv`, instala as dependências, baixa o D-Fire automaticamente, prepara o dataset, treina o YOLO, valida no conjunto de teste e executa os experimentos.
+
+> Observação: em Windows com GPU AMD, a instalação padrão do PyTorch/Ultralytics normalmente treina em CPU. O script detecta automaticamente NVIDIA CUDA quando `nvidia-smi` está disponível; caso contrário usa CPU.
+
+## Download robusto de datasets
+
+O pipeline **não exige coleta manual de imagens nem anotação manual**. O D-Fire é um dataset público de detecção de fogo e fumaça com mais de 21 mil imagens e anotações YOLO. O downloader tenta primeiro a cópia pública do Kaggle e usa o espelho do Hugging Face como fallback. O caminho utilizado fica salvo em `data_sources/dfire/.source_path`, evitando novo download em execuções seguintes.
+
+O fallback Hugging Face usa timeout maior, suporte a `hf_xet` e retomada de download. Se o Kaggle já tiver concluído o download, o projeto não baixa o dataset novamente.
+
+### Execução
+
+```powershell
+.\setup_and_train.bat
+```
+
+Ou, manualmente:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\download_datasets.py --datasets dfire
+.\.venv\Scripts\python.exe scripts\prepare_dataset.py --sources dfire
+.\.venv\Scripts\python.exe scripts\train_model.py --epochs 30 --imgsz 640 --batch 4 --device cpu
+.\.venv\Scripts\python.exe scripts\validate_model.py
+.\.venv\Scripts\python.exe scripts\evaluate_experiments.py
+```
+
+> O D-Fire é um dataset de terceiros. O projeto deve citar o dataset e seu trabalho original no relatório/apresentação.
+
+
+## Dataset padrão (v2)
+
+O pipeline padrão utiliza o **Indoor Fire Smoke Dataset**, publicado no Zenodo, com 5.000 imagens reais de ambientes internos e anotações de bounding boxes para fogo e fumaça. O arquivo publicado tem aproximadamente 200,5 MB. O pipeline baixa e prepara o dataset automaticamente, sem necessidade de coleta ou anotação manual.
+
+O D-Fire permanece disponível como dataset opcional para um treinamento maior: `python scripts/download_datasets.py --datasets dfire` e `python scripts/prepare_dataset.py --sources dfire`.
+
+
+## 🧑‍🎓 Modo acadêmico leve
+
+Para facilitar a execução em computadores sem GPU NVIDIA, o pipeline padrão usa **1.500 imagens reais** do dataset Indoor Fire Smoke, mantendo aproximadamente 70% para treino, 15% para validação e 15% para teste. O treinamento padrão usa **10 épocas**, `imgsz=512` e `batch=4`.
+
+Isso não altera o dataset de origem: é apenas uma amostragem reprodutível (`seed=42`) para o experimento acadêmico. Para usar todo o dataset, execute `python scripts/prepare_dataset.py --sources indoor --max-images 0`.
+
+---
+
+## IA generativa — Relatórios Inteligentes (Groq)
+
+A página **🧠 Relatórios Inteligentes** utiliza o modelo `openai/gpt-oss-120b` via API Groq para produzir relatórios técnicos em português com resumo executivo, estatísticas por classe, análise temporal, pontos de atenção, recomendações de verificação humana e conclusão.
+
+A aplicação prepara os dados localmente, envia apenas metadados/estatísticas (nunca imagens, vídeos, caminhos locais ou coordenadas) e exige uma resposta em JSON Schema estrito. Os números apresentados no relatório são calculados pelo Python; a IA gera a interpretação em linguagem natural.
+
+**Configuração e detalhes:** consulte [docs/IA_GENERATIVA_GROQ.md](docs/IA_GENERATIVA_GROQ.md). O documento explica o fluxo YOLO → Groq, prompt, modelos, segurança, limitações, instalação e testes.
+
+Para habilitar a integração, configure `GROQ_API_KEY` no `.env` usando `.env.example` como base. A chave não deve ser publicada no GitHub. O SDK Groq requer Python 3.10 ou superior.
+
+## 💬 Assistente Inteligente e resumo automático
+
+A aplicação inclui a página **Assistente Inteligente**, que permite fazer perguntas em linguagem natural sobre o histórico registrado. O assistente recebe estatísticas agregadas e uma amostra cronológica dos grupos de evidência; caminhos locais, coordenadas, imagens e vídeos não são enviados à Groq.
+
+Na página **Monitoramento**, a opção **Gerar resumo automático com IA ao terminar o vídeo** vem ativada por padrão. Após o processamento, o sistema seleciona somente os novos registros criados naquela execução, gera um relatório técnico usando o mesmo modelo configurado em `FIREWATCH_GROQ_MODEL` e oferece exportação TXT/PDF. Se não houver detecções ou a API estiver indisponível, o vídeo continua processado e o erro de resumo é informado sem apagar o histórico.
+
+A geração automática faz uma chamada à API por vídeo concluído com novos registros. Desmarque a opção para não consumir tokens nessa etapa.
