@@ -463,4 +463,3 @@ O modelo atual é um **protótipo acadêmico**. Ele não deve ser considerado um
 - Ruan Gimenes
 - Vitor do Nascimento Zuchieri
 - José Roberto Miranda Neto
->>>>>>> 0ffc7e6ae84e1caa31564635903330aa3379b0da
