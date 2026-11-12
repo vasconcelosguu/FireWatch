@@ -301,6 +301,7 @@ firewatch-ai/
 
 # 🔬 Critérios para uma boa avaliação
 
+<<<<<<< HEAD
 O projeto deve apresentar pelo menos:
 
 - dataset de origem identificado;
@@ -451,3 +452,15 @@ A aplicação inclui a página **Assistente Inteligente**, que permite fazer per
 Na página **Monitoramento**, a opção **Gerar resumo automático com IA ao terminar o vídeo** vem ativada por padrão. Após o processamento, o sistema seleciona somente os novos registros criados naquela execução, gera um relatório técnico usando o mesmo modelo configurado em `FIREWATCH_GROQ_MODEL` e oferece exportação TXT/PDF. Se não houver detecções ou a API estiver indisponível, o vídeo continua processado e o erro de resumo é informado sem apagar o histórico.
 
 A geração automática faz uma chamada à API por vídeo concluído com novos registros. Desmarque a opção para não consumir tokens nessa etapa.
+=======
+O modelo atual é um **protótipo acadêmico**. Ele não deve ser considerado um sistema certificado de segurança contra incêndios nem substituir equipamentos ou sistemas profissionais de detecção e alarme.
+
+## 👥 Integrantes
+
+- Felipe Piovesan
+- Frederico Faben Brumati
+- Gustavo Vasconcelos Solomão
+- Ruan Gimenes
+- Vitor do Nascimento Zuchieri
+- José Roberto Miranda Neto
+>>>>>>> 0ffc7e6ae84e1caa31564635903330aa3379b0da
