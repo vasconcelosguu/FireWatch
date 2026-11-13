@@ -18,17 +18,18 @@ Projeto acadêmico de Deep Learning que implementa um pipeline reprodutível de 
 6. [Avaliação e resultados](#6-avaliação-e-resultados)
 7. [IA generativa: relatórios inteligentes](#7-ia-generativa-relatórios-inteligentes)
 8. [Estrutura do projeto](#8-estrutura-do-projeto)
-9. [Limitações e trabalhos futuros](#9-limitações-e-trabalhos-futuros)
-10. [Referências](#10-referências)
-11. [Integrantes](#11-integrantes)
+9. [Testes](#9-testes)
+10. [Limitações e trabalhos futuros](#10-limitações-e-trabalhos-futuros)
+11. [Referências](#11-referências)
+12. [Integrantes](#12-integrantes)
 
 ---
 
 ## 1. Resumo
 
-O sistema detecta duas classes, `Fire` (0) e `Smoke` (1), em vídeos e imagens de webcam utilizando o **Ultralytics YOLO**. Cada detecção gera alerta, captura de tela e registro em log, que alimentam um dashboard em Streamlit.
+O sistema detecta duas classes, `Fire` (0) e `Smoke` (1), em vídeos e imagens de webcam utilizando o **Ultralytics YOLO**. Quando há detecção, a interface exibe um alerta visual em tempo real; capturas de tela e registros em CSV são gerados com intervalo mínimo entre ocorrências (cooldown configurável, 8 s por classe e origem por padrão), e alimentam o dashboard em Streamlit.
 
-O pipeline dispensa coleta e anotação manual de imagens: os scripts baixam datasets públicos, normalizam as anotações, removem duplicatas, criam as divisões treino/validação/teste, treinam o modelo e avaliam o resultado.
+O pipeline dispensa coleta e anotação manual de imagens: os scripts baixam datasets públicos, normalizam as anotações, removem duplicatas exatas, criam as divisões treino/validação/teste, treinam o modelo e avaliam o resultado.
 
 ```text
 Datasets públicos → Coleta automática → Deduplicação → Normalização das anotações
@@ -66,6 +67,7 @@ A IA generativa não substitui a detecção visual, e seus relatórios não cons
 | Fonte | [Zenodo, DOI 10.5281/zenodo.15826133](https://doi.org/10.5281/zenodo.15826133) | [GitHub](https://github.com/gaia-solutions-on-demand/DFireDataset) |
 
 - O **D-Fire** é baixado preferencialmente do Kaggle, com fallback para o espelho do Hugging Face (timeout ampliado, `hf_xet` e retomada de download). O caminho utilizado é salvo em `data_sources/dfire/.source_path`, evitando novos downloads.
+- No D-Fire, o conjunto de teste oficial é preservado; apenas o conjunto de treino original é dividido em treino e validação (15%).
 - O uso de mais de uma fonte aumenta a diversidade visual e reduz a dependência de um único domínio. O conjunto de teste permanece sempre separado, para medir a capacidade de generalização.
 - Para usar todas as imagens do Indoor, em vez da amostra: `python scripts/prepare_dataset.py --sources indoor --max-images 0`.
 
@@ -75,11 +77,14 @@ A IA generativa não substitui a detecção visual, e seus relatórios não cons
 
 ### 4.1 Preparação dos dados
 
-Download automático, normalização das anotações para o formato YOLO, eliminação de duplicatas e divisão em treino, validação e teste.
+1. **Download automático** dos datasets públicos.
+2. **Normalização das anotações** para o formato YOLO, aceitando labels `.txt` (YOLO) e `.xml` (Pascal VOC). No D-Fire, os índices de classe são remapeados (original: 0 = smoke, 1 = fire) para o padrão do projeto (0 = Fire, 1 = Smoke).
+3. **Deduplicação** por hash SHA-256 do arquivo, que remove apenas duplicatas exatas, e não imagens visualmente parecidas.
+4. **Divisão** em treino, validação e teste, com amostragem reprodutível (`seed=42`) e proporção 70/15/15 preservada quando `--max-images` é usado.
 
 ### 4.2 Treinamento
 
-Fine-tuning do YOLO com data augmentation nativo do Ultralytics (flip, escala, mosaic, mixup, entre outros).
+Fine-tuning de um modelo YOLO pré-treinado. O peso base padrão é o **YOLO11n** (versão *nano*, leve para CPU), com fallback para o `yolov8n`; outro peso pode ser informado com `--model`.
 
 | Configuração | Modo acadêmico leve (padrão) | Treinamento completo |
 |---|---|---|
@@ -88,19 +93,38 @@ Fine-tuning do YOLO com data augmentation nativo do Ultralytics (flip, escala, m
 | Resolução (`imgsz`) | 512 | 640 |
 | Batch | 4 | 4 |
 
-### 4.3 Pré-processamento
+Parâmetros comuns, definidos em `scripts/train_model.py`:
 
-O módulo `detector/preprocess.py` é configurável e independente do modelo, o que permite comparar a imagem original com a processada: resize, Gaussian Blur, denoise, ajuste de contraste e conversões BGR → RGB e BGR → HSV. O projeto não pressupõe que cada transformação melhore o desempenho; isso deve ser verificado experimentalmente.
+| Parâmetro | Valor | Descrição |
+|---|---|---|
+| `patience` | 5 | Parada antecipada se não houver melhora |
+| `mosaic` | 1.0 | Combinação de 4 imagens por amostra |
+| `mixup` | 0.10 | Mistura de pares de imagens |
+| `scale` | 0.50 | Variação de escala |
+| `translate` | 0.10 | Deslocamento |
+| `degrees` | 5.0 | Rotação máxima |
+| `fliplr` | 0.50 | Espelhamento horizontal |
+
+### 4.3 Pré-processamento na inferência
+
+O módulo `detector/preprocess.py` é aplicado **somente na inferência** (vídeo e webcam), de forma configurável e independente do modelo: resize (960 px por padrão), Gaussian Blur, denoise, ajuste de contraste (ativado por padrão com alpha 1,08 e beta 2) e conversões BGR → RGB e BGR → HSV. O treinamento usa as imagens originais do dataset, sem essas transformações.
+
+O projeto não pressupõe que cada transformação melhore o desempenho. A interface permite comparar a imagem original com a processada, e o efeito sobre as métricas deve ser verificado experimentalmente.
 
 ### 4.4 Experimento de thresholds
 
-O modelo é avaliado com limiares de confiança `0.25`, `0.40`, `0.50`, `0.60` e `0.75`, registrando Precision, Recall, mAP50 e mAP50-95. O objetivo é evidenciar o compromisso entre falsos positivos e falsos negativos.
+O modelo é avaliado no conjunto de teste com limiares de confiança `0.25`, `0.40`, `0.50`, `0.60` e `0.75`, registrando Precision, Recall, mAP50 e mAP50-95. O objetivo é evidenciar o compromisso entre falsos positivos e falsos negativos.
+
+Observações para a interpretação:
+
+- Por padrão, `validate_model.py` e `evaluate_experiments.py` avaliam com `imgsz=640`, enquanto o modo leve é treinado com `imgsz=512`.
+- O mAP costuma ser calculado com um limiar de confiança baixo; ao aplicar limiares altos (como 0.75), os valores de mAP tendem a diminuir artificialmente. A comparação entre thresholds deve considerar principalmente Precision e Recall.
 
 ---
 
 ## 5. Instalação e execução
 
-**Requisitos:** Python 3.10 ou superior (exigido pelo SDK `groq`) e conexão com a internet para o download dos datasets.
+**Requisitos:** Python 3.10 ou superior (exigido pelo SDK `groq`; o `setup_and_train.bat` recomenda Python 3.11 ou 3.12) e conexão com a internet para o download dos datasets e dependências.
 
 ### 5.1 Execução automática (Windows)
 
@@ -152,6 +176,28 @@ python scripts/validate_model.py
 python scripts/evaluate_experiments.py
 ```
 
+Teste rápido do modelo em imagem, vídeo ou webcam, fora da interface:
+
+```powershell
+python scripts/test_model.py caminho/da/imagem.jpg     # imagem
+python scripts/test_model.py caminho/do/video.mp4      # vídeo (tecla Q para sair)
+python scripts/test_model.py 0                         # webcam
+```
+
+### 5.3 Uso da aplicação
+
+| Página | Função |
+|---|---|
+| Início | Visão geral, indicadores e gráficos do histórico |
+| Monitoramento | Upload de vídeo (MP4, AVI, MOV) e processamento frame a frame |
+| Webcam | Detecção em tempo real pela câmera local |
+| Histórico | Filtros, tabela de registros e exportação em CSV |
+| Relatórios Inteligentes | Relatório técnico por IA generativa (TXT e PDF) |
+| Assistente Inteligente | Perguntas em linguagem natural sobre o histórico |
+| Configurações | Threshold, cooldowns, pré-processamento, webcam e recarga do modelo |
+
+O threshold de confiança padrão é 0,50. Alertas visuais aparecem a cada frame com detecção; o alerta sonoro (`winsound`) e a captura da webcam via DirectShow (`CAP_DSHOW`) são específicos do Windows.
+
 ---
 
 ## 6. Avaliação e resultados
@@ -174,19 +220,19 @@ As métricas reportadas são Precision, Recall, mAP50 e mAP50-95, calculadas no 
 
 ## 7. IA generativa: relatórios inteligentes
 
-O modelo padrão é o `openai/gpt-oss-120b`, acessado pela API da Groq e configurável por meio da variável `FIREWATCH_GROQ_MODEL`.
+O modelo padrão é o `openai/gpt-oss-120b`, acessado pela API da Groq e configurável por meio da variável `FIREWATCH_GROQ_MODEL` ou pela interface (alternativa mais leve: `openai/gpt-oss-20b`).
 
 **Funcionalidades**
 
-- **Relatórios Inteligentes:** relatório técnico em português com resumo executivo, estatísticas por classe, análise temporal, pontos de atenção, recomendações de verificação humana e conclusão, exportável em TXT e PDF.
-- **Assistente Inteligente:** perguntas em linguagem natural sobre o histórico de detecções.
+- **Relatórios Inteligentes:** relatório técnico em português com resumo executivo, estatísticas por classe, análise temporal, pontos de atenção, recomendações de verificação humana e conclusão, exportável em TXT e PDF. Relatórios idênticos (mesmos dados, modelo e versão do prompt) são reutilizados do cache da sessão, sem nova chamada à API.
+- **Assistente Inteligente:** perguntas em linguagem natural sobre o histórico de detecções, com até oito mensagens anteriores como contexto.
 - **Resumo automático:** na página de Monitoramento, ao concluir o processamento de um vídeo, é gerado um relatório apenas dos registros criados naquela execução. A opção vem ativada por padrão e realiza uma chamada à API por vídeo com novos registros; desmarque-a para não consumir tokens. Se não houver detecções ou a API estiver indisponível, o vídeo permanece processado e o histórico é preservado.
 
 **Privacidade e confiabilidade**
 
 - Somente metadados e estatísticas são enviados à Groq; imagens, vídeos, caminhos locais e coordenadas nunca são transmitidos.
 - Os números dos relatórios são calculados em Python, e o modelo de linguagem apenas redige a interpretação.
-- A resposta é exigida em JSON Schema estrito.
+- A resposta do relatório é exigida em JSON Schema estrito e validada antes de ser exibida.
 
 **Configuração**
 
@@ -205,29 +251,47 @@ firewatch-ai/
 ├── app.py                      Aplicação Streamlit
 ├── setup_and_train.bat         Setup e treinamento automáticos (Windows)
 ├── requirements.txt
-├── ai/                         Prompts e geração de relatórios
+├── .env.example                Modelo de configuração da chave Groq
+├── .streamlit/                 Configuração do Streamlit
+├── ai/                         Prompts, relatórios e assistente (chat_assistant.py)
 ├── detector/                   Detecção YOLO e pré-processamento
-├── interface/                  Páginas: home, monitor, webcam, history, ai_reports, settings
+├── interface/                  Páginas: home, monitor, webcam, history, ai_reports, ai_chat, settings
 ├── utils/                      Vídeo, logger e alertas
-├── scripts/                    Download, preparo, treino, validação e experimentos
+├── scripts/                    Download, preparo, treino, validação, experimentos e testes do modelo
+├── tests/                      Testes unitários (relatórios e assistente)
+├── docs/                       Documentação complementar
 ├── data_sources/               Datasets brutos (gerado)
 ├── datasets/fire_smoke/        Dataset normalizado (gerado)
 ├── models/                     Pesos treinados (gerado)
 ├── runs/ e reports/            Saídas de treino e avaliação (gerado)
-├── docs/                       Documentação complementar
-├── tests/                      Testes (test_ai_reports.py)
-└── screenshots/, videos/, logs/
+└── screenshots/ e logs/        Evidências e histórico de detecções (gerado)
 ```
 
 O script `scripts/create_synthetic_dataset.py` é uma ferramenta didática e experimental, e não faz parte do pipeline principal.
 
 ---
 
-## 9. Limitações e trabalhos futuros
+## 9. Testes
 
-**Limitações.** Mesmo com datasets reais, o desempenho depende da qualidade e resolução das imagens, do domínio das câmeras, da iluminação, da distância, do tamanho do fogo, da densidade da fumaça e do ambiente (interno ou externo). Um bom resultado no conjunto de teste não garante segurança em ambiente real.
+Os testes unitários cobrem a preparação dos dados enviados à IA, a geração estruturada de relatórios, o assistente, o tratamento de erros e a remoção de caminhos e coordenadas do payload. Utilizam um cliente simulado e não consomem a API da Groq.
 
-**Trabalhos futuros.**
+```powershell
+python -m unittest discover -s tests -v
+```
+
+---
+
+## 10. Limitações e trabalhos futuros
+
+**Limitações**
+
+- O desempenho depende da qualidade e resolução das imagens, do domínio das câmeras, da iluminação, da distância, do tamanho do fogo, da densidade da fumaça e do ambiente (interno ou externo). O dataset padrão contém apenas ambientes internos. Um bom resultado no conjunto de teste não garante segurança em ambiente real.
+- O treinamento usa imagens sem pré-processamento, enquanto a interface aplica, por padrão, resize e ajuste de contraste na inferência, o que pode gerar pequena diferença entre as condições de treino e de uso.
+- A deduplicação remove apenas arquivos idênticos; imagens muito semelhantes podem aparecer em conjuntos distintos.
+- Os registros do histórico respeitam um cooldown entre capturas, portanto não representam todas as detecções frame a frame.
+- O alerta sonoro e a abertura da webcam são específicos do Windows.
+
+**Trabalhos futuros**
 
 - Treinar com o conjunto completo e combinar múltiplas fontes de dados.
 - Avaliar o efeito de cada etapa de pré-processamento sobre as métricas.
@@ -236,14 +300,14 @@ O script `scripts/create_synthetic_dataset.py` é uma ferramenta didática e exp
 
 ---
 
-## 10. Referências
+## 11. Referências
 
 - Venâncio, P. V. A. B.; Lisboa, A. C.; Barbosa, A. V. *An automatic fire detection system based on deep convolutional neural networks for low-power, resource-constrained devices*. Neural Computing and Applications, 2022. Dataset D-Fire: [github.com/gaia-solutions-on-demand/DFireDataset](https://github.com/gaia-solutions-on-demand/DFireDataset).
 - Putra, A. K. *Indoor Fire Smoke Dataset*. Zenodo, 2025. DOI [10.5281/zenodo.15826133](https://doi.org/10.5281/zenodo.15826133).
 
 ---
 
-## 11. Integrantes
+## 12. Integrantes
 
 - Felipe Piovesan
 - Frederico Faben Brumati
